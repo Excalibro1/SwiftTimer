@@ -1,0 +1,20 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <AssemblyName>SurfTimer</AssemblyName>
+    <OutputPath>$(MSBuildThisFileDirectory)build/</OutputPath>
+    <PublishDir>$(OutputPath)publish/SurfTimer</PublishDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="SwiftlyS2.CS2" Version="*" ExcludeAssets="runtime" PrivateAssets="all" />
+    <Content Include="resources\mapdata\surf_.json" CopyToOutputDirectory="PreserveNewest" CopyToPublishDirectory="PreserveNewest" />
+  </ItemGroup>
+
+  <Target Name="CreateZip" AfterTargets="Publish">
+    <ZipDirectory SourceDirectory="$(PublishDir)../" DestinationFile="$(OutputPath)../$(AssemblyName).zip" Overwrite="true" />
+  </Target>
+</Project>
