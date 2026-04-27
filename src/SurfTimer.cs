@@ -1523,7 +1523,6 @@ public sealed class SurfTimer : BasePlugin
                 {
                     change();
                     SaveConfig();
-                    ClearTimerHud(player);
                     var state = GetState(player);
                     RenderTimerHud(player, state.Running ? DateTimeOffset.UtcNow - state.StartedAt : state.LastFinish);
                     var menu = BuildTimerHudMenu(player);
