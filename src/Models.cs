@@ -107,6 +107,7 @@ internal sealed class RuntimeZone
 internal sealed class RecordsFile
 {
     public Dictionary<string, List<PlayerRecord>> Maps { get; set; } = new(StringComparer.OrdinalIgnoreCase);
+    public Dictionary<string, List<CheckpointRecord>> Checkpoints { get; set; } = new(StringComparer.OrdinalIgnoreCase);
 }
 
 internal sealed class MapMetadata
@@ -115,10 +116,15 @@ internal sealed class MapMetadata
     public string Type { get; set; } = "";
 }
 
-internal sealed class PlayerRecord
+internal class PlayerRecord
 {
     public ulong SteamId { get; set; }
     public string Name { get; set; } = "";
     public double Seconds { get; set; }
     public string FinishedAtUtc { get; set; } = "";
+}
+
+internal sealed class CheckpointRecord : PlayerRecord
+{
+    public int Checkpoint { get; set; }
 }

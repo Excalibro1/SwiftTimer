@@ -332,6 +332,59 @@ public sealed class SurfTimer : BasePlugin
     [Command("top")]
     public void TopAliasCommand(ICommandContext context) => TopCommand(context);
 
+    [Command("topcp")]
+    public void TopCheckpointCommand(ICommandContext context)
+    {
+        if (context.Sender is not IPlayer player)
+            return;
+
+        if (context.Args.Length == 0 || !int.TryParse(context.Args[0], out var checkpoint) || checkpoint <= 0)
+        {
+            player.SendChat("[gold][Timer][/] Usage: [white]!topcp 1[/]");
+            return;
+        }
+
+        SendTopCheckpoint(player, checkpoint);
+    }
+
+    [Command("topcp1")]
+    public void TopCheckpoint1Command(ICommandContext context) => TopCheckpointAliasCommand(context, 1);
+
+    [Command("topcp2")]
+    public void TopCheckpoint2Command(ICommandContext context) => TopCheckpointAliasCommand(context, 2);
+
+    [Command("topcp3")]
+    public void TopCheckpoint3Command(ICommandContext context) => TopCheckpointAliasCommand(context, 3);
+
+    [Command("topcp4")]
+    public void TopCheckpoint4Command(ICommandContext context) => TopCheckpointAliasCommand(context, 4);
+
+    [Command("topcp5")]
+    public void TopCheckpoint5Command(ICommandContext context) => TopCheckpointAliasCommand(context, 5);
+
+    [Command("topcp6")]
+    public void TopCheckpoint6Command(ICommandContext context) => TopCheckpointAliasCommand(context, 6);
+
+    [Command("topcp7")]
+    public void TopCheckpoint7Command(ICommandContext context) => TopCheckpointAliasCommand(context, 7);
+
+    [Command("topcp8")]
+    public void TopCheckpoint8Command(ICommandContext context) => TopCheckpointAliasCommand(context, 8);
+
+    [Command("topcp9")]
+    public void TopCheckpoint9Command(ICommandContext context) => TopCheckpointAliasCommand(context, 9);
+
+    [Command("topcp10")]
+    public void TopCheckpoint10Command(ICommandContext context) => TopCheckpointAliasCommand(context, 10);
+
+    private void TopCheckpointAliasCommand(ICommandContext context, int checkpoint)
+    {
+        if (context.Sender is not IPlayer player)
+            return;
+
+        SendTopCheckpoint(player, checkpoint);
+    }
+
     [Command("zones")]
     public void ZonesCommand(ICommandContext context)
     {
@@ -598,8 +651,9 @@ public sealed class SurfTimer : BasePlugin
         state.LastCheckpointSequence = zone.Sequence;
         var elapsed = DateTimeOffset.UtcNow - state.StartedAt;
         SetLastSplit(state, $"cp{zone.Sequence}", elapsed);
+        var splitComparison = SaveCheckpointRecord(GetRecordMapName(state.Track), player, zone.Sequence, elapsed);
         var prefix = zone.Track == 0 ? "CP" : $"Bonus {zone.Track} CP";
-        SendPlayerOnlySplitChat(player, $"{prefix} [white]{zone.Sequence}[/]: [lime]{FormatTime(elapsed)}[/]");
+        SendPlayerOnlySplitChat(player, $"{prefix} [white]{zone.Sequence}[/]: [lime]{FormatTime(elapsed)}[/] {splitComparison}");
         RenderTimerHud(player, elapsed);
     }
 
@@ -730,6 +784,28 @@ public sealed class SurfTimer : BasePlugin
         return _records.Maps.TryGetValue(mapName, out var records) ? records.Count : 0;
     }
 
+    private CheckpointRecord? GetPlayerCheckpointBest(string mapName, int checkpoint, ulong steamId)
+    {
+        if (!_records.Checkpoints.TryGetValue(mapName, out var records))
+            return null;
+
+        return records
+            .Where(r => r.Checkpoint == checkpoint && r.SteamId == steamId)
+            .OrderBy(r => r.Seconds)
+            .FirstOrDefault();
+    }
+
+    private CheckpointRecord? GetServerCheckpointBest(string mapName, int checkpoint)
+    {
+        if (!_records.Checkpoints.TryGetValue(mapName, out var records))
+            return null;
+
+        return records
+            .Where(r => r.Checkpoint == checkpoint)
+            .OrderBy(r => r.Seconds)
+            .FirstOrDefault();
+    }
+
     private string GetMapTierText()
     {
         if (!_config.ShowMapTier)
@@ -846,6 +922,72 @@ public sealed class SurfTimer : BasePlugin
 
         _records.Maps[mapName] = records.OrderBy(r => r.Seconds).ToList();
         SaveRecords();
+    }
+
+    private string SaveCheckpointRecord(string mapName, IPlayer player, int checkpoint, TimeSpan elapsed)
+    {
+        var previousPlayerBest = GetPlayerCheckpointBest(mapName, checkpoint, player.SteamID);
+        var previousServerBest = GetServerCheckpointBest(mapName, checkpoint);
+
+        if (!_records.Checkpoints.TryGetValue(mapName, out var records))
+            _records.Checkpoints[mapName] = records = new List<CheckpointRecord>();
+
+        if (previousPlayerBest == null || elapsed.TotalSeconds < previousPlayerBest.Seconds)
+        {
+            records.RemoveAll(r => r.Checkpoint == checkpoint && r.SteamId == player.SteamID);
+            records.Add(new CheckpointRecord
+            {
+                SteamId = player.SteamID,
+                Name = player.Name,
+                Checkpoint = checkpoint,
+                Seconds = elapsed.TotalSeconds,
+                FinishedAtUtc = DateTimeOffset.UtcNow.ToString("O"),
+            });
+
+            _records.Checkpoints[mapName] = records
+                .OrderBy(r => r.Checkpoint)
+                .ThenBy(r => r.Seconds)
+                .ToList();
+            SaveRecords();
+        }
+
+        var pbText = previousPlayerBest == null
+            ? "[white]PB:first[/]"
+            : $"[white]PB:{FormatTimeDiff(elapsed.TotalSeconds - previousPlayerBest.Seconds)}[/]";
+
+        var srText = previousServerBest == null
+            ? "[white]SR:first[/]"
+            : $"[white]SR:{FormatTimeDiff(elapsed.TotalSeconds - previousServerBest.Seconds)}[/]";
+
+        return $"{pbText} {srText}";
+    }
+
+    private void SendTopCheckpoint(IPlayer player, int checkpoint)
+    {
+        var state = GetState(player);
+        var mapName = GetRecordMapName(state.Track);
+
+        if (!_records.Checkpoints.TryGetValue(mapName, out var records))
+        {
+            player.SendChat($"[gold][Timer][/] No checkpoint [white]{checkpoint}[/] records on [white]{mapName}[/] yet.");
+            return;
+        }
+
+        var top = records
+            .Where(r => r.Checkpoint == checkpoint)
+            .OrderBy(r => r.Seconds)
+            .Take(10)
+            .ToList();
+
+        if (top.Count == 0)
+        {
+            player.SendChat($"[gold][Timer][/] No checkpoint [white]{checkpoint}[/] records on [white]{mapName}[/] yet.");
+            return;
+        }
+
+        player.SendChat($"[gold][Timer][/] Top CP [white]{checkpoint}[/] for [white]{mapName}[/]:");
+        for (var i = 0; i < top.Count; i++)
+            player.SendChat($"[grey]{i + 1}.[/] [lime]{FormatTime(TimeSpan.FromSeconds(top[i].Seconds))}[/] [white]{top[i].Name}[/]");
     }
 
     private void ResetAllPlayers()
@@ -1034,6 +1176,14 @@ public sealed class SurfTimer : BasePlugin
         time.TotalHours >= 1
             ? $"{(int)time.TotalHours}:{time.Minutes:00}:{time.Seconds:00}.{time.Milliseconds:000}"
             : $"{time.Minutes:00}:{time.Seconds:00}.{time.Milliseconds:000}";
+
+    private static string FormatTimeDiff(double seconds)
+    {
+        var color = seconds <= 0 ? "lime" : "red";
+        var sign = seconds <= 0 ? "-" : "+";
+        var duration = TimeSpan.FromSeconds(Math.Abs(seconds));
+        return $"[{color}]{sign}{FormatTime(duration)}[/]";
+    }
 
     private static string GenerateDefaultConfig() =>
         """
