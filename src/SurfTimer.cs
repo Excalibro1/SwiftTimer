@@ -1648,8 +1648,17 @@ public sealed class SurfTimer : BasePlugin
 
     private void MoveTimerHudWidget(float deltaX, float deltaY)
     {
-        _config.TimerHudBaseX += deltaX;
-        _config.TimerHudBaseY += deltaY;
+        var speedLabelScaleMultiplier = Math.Clamp(_config.TimerHudSpeedLabelScaleMultiplier, 0.25f, 1.5f);
+        var detailScaleMultiplier = Math.Clamp(_config.TimerHudDetailScaleMultiplier, 0.25f, 1.5f);
+
+        _config.TimerHudTimeOffsetX += deltaX;
+        _config.TimerHudTimeOffsetY += deltaY;
+        _config.TimerHudSpeedOffsetX += deltaX;
+        _config.TimerHudSpeedOffsetY += deltaY;
+        _config.TimerHudSpeedLabelOffsetX += deltaX / speedLabelScaleMultiplier;
+        _config.TimerHudSpeedLabelOffsetY += deltaY / speedLabelScaleMultiplier;
+        _config.TimerHudDetailOffsetX += deltaX / detailScaleMultiplier;
+        _config.TimerHudDetailOffsetY += deltaY / detailScaleMultiplier;
     }
 
     private void SendTimerHudInfo(IPlayer player)
