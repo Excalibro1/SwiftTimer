@@ -34,6 +34,7 @@ public sealed class SurfTimer : BasePlugin
     private int _particleHudRenderFailureCooldownTicks;
     private object? _particleHud;
     private MethodInfo? _particleHudSetText;
+    private MethodInfo? _particleHudSetGlyphs;
     private MethodInfo? _particleHudClear;
     private readonly List<CEntityInstance> _zoneMarkers = [];
 
@@ -66,6 +67,7 @@ public sealed class SurfTimer : BasePlugin
         _particleHud = particleHud;
         var type = particleHud.GetType();
         _particleHudSetText = type.GetMethod("SetText", BindingFlags.Instance | BindingFlags.Public);
+        _particleHudSetGlyphs = type.GetMethod("SetGlyphs", BindingFlags.Instance | BindingFlags.Public);
         _particleHudClear = type.GetMethod("Clear", BindingFlags.Instance | BindingFlags.Public);
 
         if (_particleHudSetText == null || _particleHudClear == null)
@@ -1297,10 +1299,74 @@ public sealed class SurfTimer : BasePlugin
         var detailScale = scale * detailScaleMultiplier;
         var detailSpacing = spacing * detailScaleMultiplier;
 
+        if (_particleHudSetGlyphs != null)
+        {
+            SetParticleGlyphs(player, "surftimer-widget", builder =>
+            {
+                builder.AddLine(FormatTime(elapsed), 9, _config.TimerHudTimeOffsetX, spacing, _config.TimerHudTimeOffsetY, scale, _config.TimerHudTimeRed, _config.TimerHudTimeGreen, _config.TimerHudTimeBlue);
+                builder.AddLine("speed:", 6, _config.TimerHudSpeedLabelOffsetX, speedLabelSpacing, _config.TimerHudSpeedLabelOffsetY, speedLabelScale, _config.TimerHudSpeedLabelRed, _config.TimerHudSpeedLabelGreen, _config.TimerHudSpeedLabelBlue);
+                builder.AddLine(speed.ToString("0000"), 4, _config.TimerHudSpeedOffsetX + spacing * 6.0f, spacing, _config.TimerHudSpeedOffsetY, scale, _config.TimerHudSpeedRed, _config.TimerHudSpeedGreen, _config.TimerHudSpeedBlue);
+                builder.AddLine(detail, Math.Min(detail.Length, 28), _config.TimerHudDetailOffsetX, detailSpacing, _config.TimerHudDetailOffsetY, detailScale, _config.TimerHudDetailRed, _config.TimerHudDetailGreen, _config.TimerHudDetailBlue);
+            }, _config.TimerHudBaseX, _config.TimerHudBaseY);
+            return;
+        }
+
         SetParticleText(player, "surftimer-time", FormatTime(elapsed), 9, topX, spacing, topY, scale, _config.TimerHudTimeRed, _config.TimerHudTimeGreen, _config.TimerHudTimeBlue);
         SetParticleText(player, "surftimer-speed-label", "speed:", 6, speedLabelX, speedLabelSpacing, speedLabelY, speedLabelScale, _config.TimerHudSpeedLabelRed, _config.TimerHudSpeedLabelGreen, _config.TimerHudSpeedLabelBlue);
         SetParticleText(player, "surftimer-speed", speed.ToString("0000"), 4, speedX + (spacing * 6.0f), spacing, speedY, scale, _config.TimerHudSpeedRed, _config.TimerHudSpeedGreen, _config.TimerHudSpeedBlue);
         SetParticleText(player, "surftimer-rank", detail, Math.Min(detail.Length, 28), detailX, detailSpacing, detailY, detailScale, _config.TimerHudDetailRed, _config.TimerHudDetailGreen, _config.TimerHudDetailBlue);
+    }
+
+    private sealed class ParticleGlyphBuilder
+    {
+        public readonly List<char> Characters = [];
+        public readonly List<float> XOffsets = [];
+        public readonly List<float> YOffsets = [];
+        public readonly List<float> Scales = [];
+        public readonly List<int> Reds = [];
+        public readonly List<int> Greens = [];
+        public readonly List<int> Blues = [];
+
+        public void AddLine(string text, int maxCharacters, float xStart, float spacing, float yOffset, float scale, int red, int green, int blue)
+        {
+            text ??= "";
+            maxCharacters = Math.Clamp(maxCharacters, 0, text.Length);
+            for (var i = 0; i < maxCharacters; i++)
+            {
+                Characters.Add(text[i]);
+                XOffsets.Add(xStart + i * spacing);
+                YOffsets.Add(yOffset);
+                Scales.Add(scale);
+                Reds.Add(red);
+                Greens.Add(green);
+                Blues.Add(blue);
+            }
+        }
+    }
+
+    private void SetParticleGlyphs(IPlayer player, string channel, Action<ParticleGlyphBuilder> build, float baseX, float baseY)
+    {
+        if (_particleHud == null || _particleHudSetGlyphs == null)
+            return;
+
+        var builder = new ParticleGlyphBuilder();
+        build(builder);
+        var maxCharacters = 64;
+        _particleHudSetGlyphs.Invoke(_particleHud,
+        [
+            player,
+            channel,
+            new string(builder.Characters.ToArray()),
+            maxCharacters,
+            baseX,
+            baseY,
+            builder.XOffsets.ToArray(),
+            builder.YOffsets.ToArray(),
+            builder.Scales.ToArray(),
+            builder.Reds.ToArray(),
+            builder.Greens.ToArray(),
+            builder.Blues.ToArray(),
+        ]);
     }
 
     private static string GetRecentSplitText(PlayerTimerState state)
@@ -1341,6 +1407,7 @@ public sealed class SurfTimer : BasePlugin
             _particleHudClear.Invoke(_particleHud, [player, "surftimer-main"]);
             _particleHudClear.Invoke(_particleHud, [player, "surftimer-label"]);
             _particleHudClear.Invoke(_particleHud, [player, "surftimer-hash"]);
+            _particleHudClear.Invoke(_particleHud, [player, "surftimer-widget"]);
             _particleHudClear.Invoke(_particleHud, [player, "surftimer-time"]);
             _particleHudClear.Invoke(_particleHud, [player, "surftimer-speed-label"]);
             _particleHudClear.Invoke(_particleHud, [player, "surftimer-speed"]);
