@@ -539,7 +539,7 @@ public sealed class SurfTimer : BasePlugin
             case ZoneType.Start:
                 state.Reset();
                 state.Track = zone.Track;
-                player.SendChat(zone.Track == 0
+                SendPlayerOnlyTimerChat(player, zone.Track == 0
                     ? "[gold][Timer][/] In start zone. Leave to begin."
                     : $"[gold][Timer][/] In bonus [white]{zone.Track}[/] start. Leave to begin.");
                 break;
@@ -573,7 +573,7 @@ public sealed class SurfTimer : BasePlugin
         state.LastSplitElapsed = TimeSpan.Zero;
         state.LastSplitAt = default;
         state.Track = zone.Track;
-        player.SendChat(zone.Track == 0
+        SendPlayerOnlyTimerChat(player, zone.Track == 0
             ? "[gold][Timer][/] Started."
             : $"[gold][Timer][/] Bonus [white]{zone.Track}[/] started.");
     }
@@ -586,7 +586,7 @@ public sealed class SurfTimer : BasePlugin
         state.LastStageSequence = zone.Sequence;
         var elapsed = DateTimeOffset.UtcNow - state.StartedAt;
         SetLastSplit(state, $"s{zone.Sequence}", elapsed);
-        player.SendChat($"[gold][Timer][/] Stage [white]{zone.Sequence}[/]: [lime]{FormatTime(elapsed)}[/]");
+        SendPlayerOnlySplitChat(player, $"Stage [white]{zone.Sequence}[/]: [lime]{FormatTime(elapsed)}[/]");
         RenderTimerHud(player, elapsed);
     }
 
@@ -599,8 +599,21 @@ public sealed class SurfTimer : BasePlugin
         var elapsed = DateTimeOffset.UtcNow - state.StartedAt;
         SetLastSplit(state, $"cp{zone.Sequence}", elapsed);
         var prefix = zone.Track == 0 ? "CP" : $"Bonus {zone.Track} CP";
-        player.SendChat($"[gold][Timer][/] {prefix} [white]{zone.Sequence}[/]: [lime]{FormatTime(elapsed)}[/]");
+        SendPlayerOnlySplitChat(player, $"{prefix} [white]{zone.Sequence}[/]: [lime]{FormatTime(elapsed)}[/]");
         RenderTimerHud(player, elapsed);
+    }
+
+    private static void SendPlayerOnlySplitChat(IPlayer player, string message)
+    {
+        // Poor-SharpTimer-style split output: only the runner sees checkpoint/stage times.
+        SendPlayerOnlyTimerChat(player, message);
+    }
+
+    private static void SendPlayerOnlyTimerChat(IPlayer player, string message)
+    {
+        player.SendChat(message.StartsWith("[gold][Timer][/]", StringComparison.Ordinal)
+            ? message
+            : $"[gold][Timer][/] {message}");
     }
 
     private static void SetLastSplit(PlayerTimerState state, string label, TimeSpan elapsed)
