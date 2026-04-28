@@ -1132,16 +1132,16 @@ public sealed class SurfTimer : BasePlugin
     {
         config.TimerHudBaseX = -5.8f;
         config.TimerHudBaseY = -12.9f;
-        config.TimerHudTimeOffsetX = 2.0f;
-        config.TimerHudTimeOffsetY = 0.0f;
-        config.TimerHudSpeedOffsetX = 1.4f;
-        config.TimerHudSpeedOffsetY = 1.35f;
-        config.TimerHudSpeedLabelOffsetX = 1.4f;
-        config.TimerHudSpeedLabelOffsetY = -3.65f;
-        config.TimerHudDetailOffsetX = -1.1f;
-        config.TimerHudDetailOffsetY = -1.9f;
-        config.TimerHudSpacing = 1.0f;
-        config.TimerHudScale = 0.026f;
+        config.TimerHudTimeOffsetX = 0.6f;
+        config.TimerHudTimeOffsetY = -4.6f;
+        config.TimerHudSpeedOffsetX = 0.0f;
+        config.TimerHudSpeedOffsetY = -3.25f;
+        config.TimerHudSpeedLabelOffsetX = -2.2f;
+        config.TimerHudSpeedLabelOffsetY = -10.221f;
+        config.TimerHudDetailOffsetX = -3.8f;
+        config.TimerHudDetailOffsetY = -8.471f;
+        config.TimerHudSpacing = 1.25f;
+        config.TimerHudScale = 0.024f;
         config.TimerHudSpeedLabelScaleMultiplier = 0.7f;
         config.TimerHudSpeedLabelSpacingMultiplier = 1.0f;
         config.TimerHudDetailScaleMultiplier = 0.7f;
@@ -1210,18 +1210,18 @@ public sealed class SurfTimer : BasePlugin
           "ParticleHudLabelScale": 0.032,
           "TimerHudBaseX": -5.8,
           "TimerHudBaseY": -12.9,
-          "TimerHudSpacing": 1.0,
-          "TimerHudScale": 0.026,
-          "TimerHudTimeOffsetX": 2.0,
-          "TimerHudTimeOffsetY": 0.0,
-          "TimerHudSpeedOffsetX": 1.4,
-          "TimerHudSpeedOffsetY": 1.35,
-          "TimerHudSpeedLabelOffsetX": 1.4,
-          "TimerHudSpeedLabelOffsetY": -3.65,
+          "TimerHudSpacing": 1.25,
+          "TimerHudScale": 0.024,
+          "TimerHudTimeOffsetX": 0.6,
+          "TimerHudTimeOffsetY": -4.6,
+          "TimerHudSpeedOffsetX": 0.0,
+          "TimerHudSpeedOffsetY": -3.25,
+          "TimerHudSpeedLabelOffsetX": -2.2,
+          "TimerHudSpeedLabelOffsetY": -10.221,
           "TimerHudSpeedLabelScaleMultiplier": 0.7,
           "TimerHudSpeedLabelSpacingMultiplier": 1.0,
-          "TimerHudDetailOffsetX": -1.1,
-          "TimerHudDetailOffsetY": -1.9,
+          "TimerHudDetailOffsetX": -3.8,
+          "TimerHudDetailOffsetY": -8.471,
           "TimerHudDetailScaleMultiplier": 0.7,
           "TimerHudTimeRed": 156,
           "TimerHudTimeGreen": 255,
