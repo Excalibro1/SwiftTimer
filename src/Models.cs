@@ -126,5 +126,6 @@ internal class PlayerRecord
 
 internal sealed class CheckpointRecord : PlayerRecord
 {
+    public string Kind { get; set; } = "cp";
     public int Checkpoint { get; set; }
 }

@@ -641,7 +641,9 @@ public sealed class SurfTimer : BasePlugin
         state.LastStageSequence = zone.Sequence;
         var elapsed = DateTimeOffset.UtcNow - state.StartedAt;
         SetLastSplit(state, $"s{zone.Sequence}", elapsed);
-        SendPlayerOnlySplitChat(player, $"Stage [white]{zone.Sequence}[/]: [lime]{FormatTime(elapsed)}[/]");
+        var splitComparison = SaveCheckpointRecord(GetRecordMapName(state.Track), player, zone.Sequence, elapsed, "stage");
+        var prefix = zone.Track == 0 ? "Stage" : $"Bonus {zone.Track} Stage";
+        SendPlayerOnlySplitChat(player, $"{prefix} [white]{zone.Sequence}[/]: [lime]{FormatTime(elapsed)}[/] {splitComparison}");
         RenderTimerHud(player, elapsed);
     }
 
@@ -653,7 +655,7 @@ public sealed class SurfTimer : BasePlugin
         state.LastCheckpointSequence = zone.Sequence;
         var elapsed = DateTimeOffset.UtcNow - state.StartedAt;
         SetLastSplit(state, $"cp{zone.Sequence}", elapsed);
-        var splitComparison = SaveCheckpointRecord(GetRecordMapName(state.Track), player, zone.Sequence, elapsed);
+        var splitComparison = SaveCheckpointRecord(GetRecordMapName(state.Track), player, zone.Sequence, elapsed, "cp");
         var prefix = zone.Track == 0 ? "CP" : $"Bonus {zone.Track} CP";
         SendPlayerOnlySplitChat(player, $"{prefix} [white]{zone.Sequence}[/]: [lime]{FormatTime(elapsed)}[/] {splitComparison}");
         RenderTimerHud(player, elapsed);
@@ -786,27 +788,30 @@ public sealed class SurfTimer : BasePlugin
         return _records.Maps.TryGetValue(mapName, out var records) ? records.Count : 0;
     }
 
-    private CheckpointRecord? GetPlayerCheckpointBest(string mapName, int checkpoint, ulong steamId)
+    private CheckpointRecord? GetPlayerCheckpointBest(string mapName, int checkpoint, ulong steamId, string kind = "cp")
     {
         if (!_records.Checkpoints.TryGetValue(mapName, out var records))
             return null;
 
         return records
-            .Where(r => r.Checkpoint == checkpoint && r.SteamId == steamId)
+            .Where(r => GetCheckpointKind(r) == kind && r.Checkpoint == checkpoint && r.SteamId == steamId)
             .OrderBy(r => r.Seconds)
             .FirstOrDefault();
     }
 
-    private CheckpointRecord? GetServerCheckpointBest(string mapName, int checkpoint)
+    private CheckpointRecord? GetServerCheckpointBest(string mapName, int checkpoint, string kind = "cp")
     {
         if (!_records.Checkpoints.TryGetValue(mapName, out var records))
             return null;
 
         return records
-            .Where(r => r.Checkpoint == checkpoint)
+            .Where(r => GetCheckpointKind(r) == kind && r.Checkpoint == checkpoint)
             .OrderBy(r => r.Seconds)
             .FirstOrDefault();
     }
+
+    private static string GetCheckpointKind(CheckpointRecord record)
+        => string.IsNullOrWhiteSpace(record.Kind) ? "cp" : record.Kind;
 
     private string GetMapTierText()
     {
@@ -926,28 +931,30 @@ public sealed class SurfTimer : BasePlugin
         SaveRecords();
     }
 
-    private string SaveCheckpointRecord(string mapName, IPlayer player, int checkpoint, TimeSpan elapsed)
+    private string SaveCheckpointRecord(string mapName, IPlayer player, int checkpoint, TimeSpan elapsed, string kind)
     {
-        var previousPlayerBest = GetPlayerCheckpointBest(mapName, checkpoint, player.SteamID);
-        var previousServerBest = GetServerCheckpointBest(mapName, checkpoint);
+        var previousPlayerBest = GetPlayerCheckpointBest(mapName, checkpoint, player.SteamID, kind);
+        var previousServerBest = GetServerCheckpointBest(mapName, checkpoint, kind);
 
         if (!_records.Checkpoints.TryGetValue(mapName, out var records))
             _records.Checkpoints[mapName] = records = new List<CheckpointRecord>();
 
         if (previousPlayerBest == null || elapsed.TotalSeconds < previousPlayerBest.Seconds)
         {
-            records.RemoveAll(r => r.Checkpoint == checkpoint && r.SteamId == player.SteamID);
+            records.RemoveAll(r => GetCheckpointKind(r) == kind && r.Checkpoint == checkpoint && r.SteamId == player.SteamID);
             records.Add(new CheckpointRecord
             {
                 SteamId = player.SteamID,
                 Name = player.Name,
+                Kind = kind,
                 Checkpoint = checkpoint,
                 Seconds = elapsed.TotalSeconds,
                 FinishedAtUtc = DateTimeOffset.UtcNow.ToString("O"),
             });
 
             _records.Checkpoints[mapName] = records
-                .OrderBy(r => r.Checkpoint)
+                .OrderBy(r => GetCheckpointKind(r))
+                .ThenBy(r => r.Checkpoint)
                 .ThenBy(r => r.Seconds)
                 .ToList();
             SaveRecords();
@@ -976,7 +983,7 @@ public sealed class SurfTimer : BasePlugin
         }
 
         var top = records
-            .Where(r => r.Checkpoint == checkpoint)
+            .Where(r => GetCheckpointKind(r) == "cp" && r.Checkpoint == checkpoint)
             .OrderBy(r => r.Seconds)
             .Take(10)
             .ToList();
